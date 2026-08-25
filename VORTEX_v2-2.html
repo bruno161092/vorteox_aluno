@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>VORTEX v2.0</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #07090e;
+      font-family: 'Oswald', system-ui, sans-serif;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700;900&display=swap');
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const {useState, useEffect, useRef, useCallback, useMemo} = React;
+
+    // ── CSS Variables & Theme Tokens ──────────────────────────────────
+    const THEMES = {
+      "lime-neon": {name: "Lime Neon", emoji: "⚡", accent: "#c8f135", accentD: "rgba(200,241,53,0.14)", accentGlow: "0 0 32px rgba(200,241,53,0.35)", accentGrad: "linear-gradient(135deg,#c8f135,#7ecb20)", accentRgb: "200,241,53"},
+      "blue-ice": {name: "Blue Ice", emoji: "🧊", accent: "#38bdf8", accentD: "rgba(56,189,248,0.14)", accentGlow: "0 0 32px rgba(56,189,248,0.35)", accentGrad: "linear-gradient(135deg,#38bdf8,#0284c7)", accentRgb: "56,189,248"},
+      "purple-galaxy": {name: "Purple Galaxy", emoji: "🌌", accent: "#a855f7", accentD: "rgba(168,85,247,0.14)", accentGlow: "0 0 32px rgba(168,85,247,0.4)", accentGrad: "linear-gradient(135deg,#a855f7,#7c3aed)", accentRgb: "168,85,247"},
+      "orange-fire": {name: "Orange Fire", emoji: "🔥", accent: "#f97316", accentD: "rgba(249,115,22,0.14)", accentGlow: "0 0 32px rgba(249,115,22,0.35)", accentGrad: "linear-gradient(135deg,#f97316,#ef4444)", accentRgb: "249,115,22"},
+      "rose-gold": {name: "Rose Gold", emoji: "🌹", accent: "#f43f8e", accentD: "rgba(244,63,142,0.14)", accentGlow: "0 0 32px rgba(244,63,142,0.35)", accentGrad: "linear-gradient(135deg,#f43f8e,#ec4899)", accentRgb: "244,63,142"},
+    };
+
+    const BASE = {
+      bg: "#07090e", bg1: "#0c0f18", bg2: "#111520", bg3: "#181d2c", bg4: "#1e2535",
+      blue: "#3b82f6", cyan: "#06d6d6", orange: "#ff7c40", red: "#ff4560", green: "#22d07a",
+      purple: "#a855f7", gold: "#f5b731", text: "#eef1f8", muted: "#6b7894", dim: "#2e3548",
+      border: "#1c2130", borderHi: "#2a3348", g5: "linear-gradient(135deg,#f5b731,#ff7c40)",
+    };
+
+    function makeC(theme) {
+      const t = THEMES[theme] || THEMES["lime-neon"];
+      return {...BASE, lime: t.accent, limeD: t.accentD, limeGlow: t.accentGlow, g1: t.accentGrad, accentRgb: t.accentRgb, themeKey: theme};
+    }
+
+    const USER = {
+      name: "Bruno Rafael", gymCoins: 340, streak: 7, level: 12, xp: 2840, xpNext: 3000,
+      plan: "Hipertrofia", personal: "Coach Ana Lima", lastWorkout: new Date(Date.now() - 86400000),
+      totalWorkouts: 47, rank: 3, bio: "Foco total. Sem desculpas. 💪", avatar: null,
+    };
+
+    const DEFAULT_WORKOUTS = [
+      {
+        id: "w1", name: "Treino A — Peito & Tríceps", day: "Hoje", done: false, duration: 55, exercises: [
+          {id: "e1", name: "Supino Reto (Barra)", sets: 4, reps: 12, weight: 80, lastWeight: 75, muscle: "Peitoral", rest: 60},
+          {id: "e2", name: "Supino Inclinado (Halteres)", sets: 3, reps: 10, weight: 65, lastWeight: 62.5, muscle: "Peitoral Superior", rest: 60},
+          {id: "e3", name: "Crossover (Polia Alta)", sets: 3, reps: 15, weight: 20, lastWeight: 17.5, muscle: "Peitoral", rest: 45},
+          {id: "e4", name: "Tríceps Pulley (Barra Reta)", sets: 4, reps: 12, weight: 40, lastWeight: 37.5, muscle: "Tríceps", rest: 45},
+          {id: "e5", name: "Tríceps Corda", sets: 3, reps: 12, weight: 12, lastWeight: 10, muscle: "Tríceps", rest: 45},
+        ]
+      },
+      {
+        id: "w2", name: "Treino B — Costas & Bíceps", day: "Amanhã", done: false, duration: 60, exercises: [
+          {id: "e6", name: "Puxada Frontal (Aberta)", sets: 4, reps: 12, weight: 70, lastWeight: 67.5, muscle: "Latíssimo", rest: 60},
+          {id: "e7", name: "Remada Curvada (Barra)", sets: 4, reps: 10, weight: 60, lastWeight: 57.5, muscle: "Romboides", rest: 60},
+          {id: "e8", name: "Rosca Direta (Barra Reta)", sets: 3, reps: 12, weight: 35, lastWeight: 32.5, muscle: "Bíceps", rest: 45},
+        ]
+      },
+      {
+        id: "w3", name: "Treino C — Pernas", day: "Sex", done: true, duration: 70, exercises: [
+          {id: "e9", name: "Agachamento Livre (Barra)", sets: 5, reps: 8, weight: 100, lastWeight: 95, muscle: "Quadríceps", rest: 90},
+          {id: "e10", name: "Leg Press 45°", sets: 4, reps: 12, weight: 200, lastWeight: 190, muscle: "Quadríceps", rest: 75},
+          {id: "e11", name: "Cadeira Extensora", sets: 3, reps: 15, weight: 60, lastWeight: 57.5, muscle: "Quadríceps", rest: 45},
+        ]
+      },
+    ];
+
+    const DEFAULT_DIET = {
+      name: "Dieta de Ganho de Massa", targetCalories: 3200, currentCalories: 2150, obs: "",
+      macros: {
+        protein: {target: 180, current: 110, unit: "g"},
+        carbs: {target: 380, current: 240, unit: "g"},
+        fat: {target: 85, current: 52, unit: "g"},
+      },
+      meals: [
+        {id: "m1", name: "Café da Manhã", time: "07:00", done: true, calories: 620, foods: ["6 ovos mexidos", "2 fatias pão integral", "1 banana"]},
+        {id: "m2", name: "Pré-Treino", time: "10:00", done: true, calories: 480, foods: ["150g arroz", "150g frango", "Salada"]},
+        {id: "m3", name: "Pós-Treino", time: "13:00", done: false, calories: 510, foods: ["Whey 2 doses", "50g aveia", "1 maçã"]},
+        {id: "m4", name: "Almoço", time: "14:30", done: false, calories: 750, foods: ["200g carne bovina magra", "200g batata doce", "Legumes"]},
+        {id: "m5", name: "Jantar", time: "20:00", done: false, calories: 600, foods: ["200g salmão", "Arroz integral", "Brócolis"]},
+        {id: "m6", name: "Ceia", time: "22:30", done: false, calories: 240, foods: ["200g cottage", "1 col. pasta amendoim"]},
+      ],
+    };
+
+    const RANKING = [
+      {pos: 1, name: "Pedro Santos", coins: 890, streak: 22},
+      {pos: 2, name: "Carla Mendes", coins: 720, streak: 18},
+      {pos: 3, name: "Lucas Ferreira", coins: 340, streak: 7, isMe: true},
+      {pos: 4, name: "Ana Costa", coins: 290, streak: 5},
+      {pos: 5, name: "Marcos Lima", coins: 180, streak: 3},
+    ];
+
+    const REWARDS = [
+      {id: "r1", name: "5% desconto mensalidade", cost: 200, icon: "💰"},
+      {id: "r2", name: "Whey Protein 1kg", cost: 500, icon: "🥛"},
+      {id: "r3", name: "Camiseta VORTEX", cost: 350, icon: "👕"},
+      {id: "r4", name: "1 mês grátis", cost: 999, icon: "🎁"},
+    ];
+
+    const EX_LIB_DEFAULT = [
+      {g: "Peito", col: "#3b82f6", ex: ["Supino Reto (Barra)", "Supino Reto (Halteres)", "Supino Inclinado (Halteres)", "Crossover (Polia Alta)", "Peck Deck (Voador)", "Crucifixo Reto", "Flexão de Braços", "Dips para Peito"]},
+      {g: "Costas", col: "#06d6d6", ex: ["Puxada Frontal (Aberta)", "Puxada Frontal (Supinada)", "Barra Fixa", "Remada Curvada (Barra)", "Remada Unilateral", "Levantamento Terra", "Face Pull", "Pull Down"]},
+      {g: "Pernas", col: "#c8f135", ex: ["Agachamento Livre", "Leg Press 45°", "Hack Squat", "Cadeira Extensora", "Cadeira Flexora", "Stiff", "Afundo / Avanço", "Sissy Squat"]},
+      {g: "Ombros", col: "#a855f7", ex: ["Desenvolvimento (Military Press)", "Desenvolvimento Arnold", "Elevação Lateral", "Elevação Frontal", "Crucifixo Inverso", "Encolhimento de Ombros", "Remada Alta"]},
+      {g: "Bíceps", col: "#ff7c40", ex: ["Rosca Direta (Barra Reta)", "Rosca Alternada", "Rosca Inclinada", "Rosca Scott", "Rosca Concentrada", "Rosca Martelo", "Rosca 21"]},
+      {g: "Tríceps", col: "#ff4560", ex: ["Tríceps Pulley", "Tríceps Corda", "Tríceps Testa", "Tríceps Francês", "Tríceps Kickback", "Dips Paralelas", "Supino Fechado"]},
+      {g: "Abdômen & Core", col: "#22d07a", ex: ["Crunch", "Elevação de Pernas", "Abdominal Bicicleta", "Prancha Isométrica", "Roda Abdominal", "Russian Twist", "Dead Bug"]},
+      {g: "Panturrilha", col: "#f5b731", ex: ["Panturrilha em Pé", "Panturrilha Sentado", "Panturrilha no Leg Press", "Sóleo"]},
+    ];
+
+    const WEEKLY_CHALLENGES = [
+      {id: "c1", title: "Guerreiro da Semana", desc: "Complete 4 treinos esta semana", progress: 2, total: 4, reward: 80, icon: "⚔️", color: "#a855f7"},
+      {id: "c2", title: "Rei do Cardio", desc: "30min de cardio em 3 dias", progress: 1, total: 3, reward: 60, icon: "🏃", color: "#f97316"},
+      {id: "c3", title: "Consistência é Tudo", desc: "Marque presença 5 dias seguidos", progress: 3, total: 5, reward: 100, icon: "🔥", color: "#f5b731"},
+    ];
+
+    const DAILY_MISSIONS = [
+      {id: "d1", title: "Check-in na academia", done: false, reward: 15, icon: "📍"},
+      {id: "d2", title: "Registrar peso do treino", done: true, reward: 10, icon: "⚖️"},
+      {id: "d3", title: "Beber 2L de água", done: false, reward: 5, icon: "💧"},
+      {id: "d4", title: "Completar refeição pós-treino", done: true, reward: 10, icon: "🥗"},
+    ];
+
+    function readSync() {
+      try {
+        const wkRaw = localStorage.getItem("vortex_wk");
+        const dtRaw = localStorage.getItem("vortex_dt");
+        const msRaw = localStorage.getItem("vortex_measures");
+        const exRaw = localStorage.getItem("vortex_exlib");
+        const ts = localStorage.getItem("vortex_ts") || "0";
+        const days = ["Hoje", "Amanhã", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+        let workouts = null, diet = null, measures = null, exLibrary = null;
+        if (wkRaw) {
+          const all = JSON.parse(wkRaw);
+          const mine = all.filter((w) => w.stu === USER.name);
+          if (mine.length > 0) {
+            workouts = mine.map((w, i) => ({
+              id: String(w.id), name: w.name, day: days[i % days.length],
+              done: false, duration: w.dur || 55, updatedAt: w.updAt,
+              exercises: w.exs.map((e, j) => {
+                const nm = typeof e === "string" ? e : e.name;
+                return {id: `ex_${w.id}_${j}`, name: nm, sets: typeof e === "object" ? e.sets || 4 : 4, reps: typeof e === "object" ? e.reps || 12 : 12, weight: typeof e === "object" ? e.kg || 0 : 0, lastWeight: typeof e === "object" ? e.kg || 0 : 0, muscle: typeof e === "object" ? e.muscle || "—" : "—", rest: typeof e === "object" ? e.rest || 60 : 60};
+              }),
+            }));
+          }
+        }
+        if (dtRaw) {
+          const all = JSON.parse(dtRaw);
+          const mine = all.filter((d) => d.stu === USER.name);
+          if (mine.length > 0) {
+            const d = mine[mine.length - 1];
+            diet = {name: d.name, targetCalories: d.cal, currentCalories: Math.round(d.cal * 0.67), obs: d.obs || "", macros: {protein: {target: d.prot, current: Math.round(d.prot * 0.61), unit: "g"}, carbs: {target: d.carb, current: Math.round(d.carb * 0.63), unit: "g"}, fat: {target: d.fat, current: Math.round(d.fat * 0.61), unit: "g"}}, meals: DEFAULT_DIET.meals};
+          }
+        }
+        if (msRaw) {const all = JSON.parse(msRaw); if (all[1] && all[1].length > 0) measures = all[1].slice().sort((a, b) => (a.date < b.date ? -1 : 1));}
+        if (exRaw) exLibrary = JSON.parse(exRaw);
+        return {workouts, diet, measures, exLibrary, ts};
+      } catch {return {workouts: null, diet: null, measures: null, exLibrary: null, ts: "0"};}
+    }
+
+    function sendHelpAlert(exerciseName, message) {
+      try {
+        const arr = JSON.parse(localStorage.getItem("vortex_help_alerts") || "[]");
+        arr.unshift({id: Date.now(), student: USER.name, exercise: exerciseName, message: message || "", ts: Date.now(), read: false});
+        localStorage.setItem("vortex_help_alerts", JSON.stringify(arr.slice(0, 50)));
+        localStorage.setItem("vortex_help_ts", String(Date.now()));
+      } catch { }
+    }
+
+    function Confetti({active}) {
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        if (!active) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        const pieces = Array.from({length: 120}, () => ({x: Math.random() * canvas.width, y: -20 - Math.random() * 100, w: 6 + Math.random() * 8, h: 10 + Math.random() * 6, color: ["#c8f135", "#38bdf8", "#a855f7", "#f97316", "#f43f8e", "#f5b731", "#22d07a"][Math.floor(Math.random() * 7)], speed: 2 + Math.random() * 4, angle: Math.random() * 360, spin: (Math.random() - 0.5) * 8, vx: (Math.random() - 0.5) * 3}));
+        let raf;
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          pieces.forEach((p) => {p.y += p.speed; p.x += p.vx; p.angle += p.spin; ctx.save(); ctx.translate(p.x + p.w / 2, p.y + p.h / 2); ctx.rotate((p.angle * Math.PI) / 180); ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();});
+          if (pieces.some((p) => p.y < canvas.height + 50)) raf = requestAnimationFrame(draw);
+        };
+        raf = requestAnimationFrame(draw);
+        return () => cancelAnimationFrame(raf);
+      }, [active]);
+      if (!active) return null;
+      return <canvas ref={canvasRef} style={{position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9999}} />;
+    }
+
+    function ParticlesBg({C}) {
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const resize = () => {canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;};
+        resize();
+        const pts = Array.from({length: 30}, () => ({x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 1 + Math.random() * 1.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, o: 0.1 + Math.random() * 0.3}));
+        let raf;
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          pts.forEach((p) => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${C.accentRgb},${p.o})`; ctx.fill();
+          });
+          raf = requestAnimationFrame(draw);
+        };
+        raf = requestAnimationFrame(draw);
+        window.addEventListener("resize", resize);
+        return () => {cancelAnimationFrame(raf); window.removeEventListener("resize", resize);};
+      }, [C.accentRgb]);
+      return <canvas ref={canvasRef} style={{position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.6}} />;
+    }
+
+    function Toast({msg, type = "info", C}) {
+      const colors = {info: C.lime, success: BASE.green, error: BASE.red, warning: BASE.gold};
+      const col = colors[type] || C.lime;
+      return (
+        <div style={{position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", background: "rgba(12,15,24,0.96)", backdropFilter: "blur(16px)", border: `1px solid ${col}40`, borderRadius: 14, padding: "12px 20px", color: col, fontWeight: 800, fontSize: 13, zIndex: 9000, boxShadow: `0 0 24px ${col}30`, whiteSpace: "nowrap", animation: "slideDown .25s ease"}}>
+          {msg}
+        </div>
+      );
+    }
+
+    function Ic({n, s = 20, c = "currentColor", w = 2}) {
+      const paths = {
+        dumbbell: <><line x1="6.5" y1="6.5" x2="17.5" y2="17.5" /><path d="M8 8L5.5 10.5a2.83 2.83 0 000 4l4 4a2.83 2.83 0 004 0l2.5-2.5M16 16l2.5-2.5a2.83 2.83 0 000-4l-4-4a2.83 2.83 0 00-4 0L8 8" /></>,
+        trophy: <><path d="M6 9H4.5a2.5 2.5 0 010-5H6" /><path d="M18 9h1.5a2.5 2.5 0 000-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0012 0V2z" /></>,
+        salad: <><path d="M7 21h10" /><path d="M12 21a9 9 0 009-9H3a9 9 0 009 9z" /></>,
+        chart: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>,
+        play: <polygon points="5 3 19 12 5 21 5 3" />,
+        check: <polyline points="20 6 9 17 4 12" />,
+        chevD: <polyline points="6 9 12 15 18 9" />,
+        chevU: <polyline points="18 15 12 9 6 15" />,
+        chevR: <polyline points="9 18 15 12 9 6" />,
+        chevL: <polyline points="15 18 9 12 15 6" />,
+        bell: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></>,
+        x: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
+        trending: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>,
+        home: <><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>,
+        ruler: <><path d="M21.3 8.7L8.7 21.3a2.4 2.4 0 01-3.4 0L2.7 18.7a2.4 2.4 0 010-3.4L15.3 2.7a2.4 2.4 0 013.4 0l2.6 2.6a2.4 2.4 0 010 3.4z" /><line x1="7.5" y1="10.5" x2="10" y2="13" /><line x1="11" y1="7" x2="13.5" y2="9.5" /></>,
+        handhelp: <><path d="M18 11V6a2 2 0 00-2-2 2 2 0 00-2 2" /><path d="M14 10V4a2 2 0 00-2-2 2 2 0 00-2 2v2" /><path d="M10 10.5V6a2 2 0 00-2-2 2 2 0 00-2 2v8" /><path d="M18 8a2 2 0 114 0v6a8 8 0 01-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 012.83-2.82L7 15" /></>,
+        user: <><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
+        edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></>,
+        share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></>,
+        qr: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="5" y="5" width="3" height="3" /><rect x="16" y="5" width="3" height="3" /><rect x="5" y="16" width="3" height="3" /><path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3" /></>,
+        camera: <><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" /></>,
+        zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+        fire: <path d="M12 2c0 0-5 5-5 10a5 5 0 0010 0c0-2.5-2-4.5-2-4.5S14 10 12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2" />,
+        star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
+        target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+        image: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></>,
+      };
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {paths[n]}
+        </svg>
+      );
+    }
+
+    function Ava({name, size = 34, C, img = null}) {
+      const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+      return (
+        <div style={{width: size, height: size, borderRadius: "50%", background: img ? "transparent" : `linear-gradient(135deg, ${C.lime}30, ${C.lime}60)`, border: `2px solid ${C.lime}60`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 900, color: C.lime, flexShrink: 0, overflow: "hidden"}}>
+          {img ? <img src={img} alt={name} style={{width: "100%", height: "100%", objectFit: "cover"}} /> : initials}
+        </div>
+      );
+    }
+
+    function Ring({pct, r = 28, color, C, stroke = 4, children}) {
+      const col = color || C.lime;
+      const ci = 2 * Math.PI * r;
+      const size = r * 2 + stroke * 2 + 4;
+      return (
+        <div style={{position: "relative", width: size, height: size, flexShrink: 0}}>
+          <svg width={size} height={size} style={{transform: "rotate(-90deg)", display: "block"}}>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={BASE.dim} strokeWidth={stroke} />
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={stroke} strokeDasharray={ci} strokeDashoffset={ci * (1 - Math.min(1, pct))} strokeLinecap="round" style={{transition: "stroke-dashoffset .7s cubic-bezier(.34,1.56,.64,1)"}} />
+          </svg>
+          {children && <div style={{position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>{children}</div>}
+        </div>
+      );
+    }
+
+    function MacroBar({label, curr, target, color, unit = "g", C}) {
+      const pct = Math.min(1, curr / target);
+      return (
+        <div style={{marginBottom: 7}}>
+          <div style={{display: "flex", justifyContent: "space-between", marginBottom: 4}}>
+            <span style={{color: BASE.muted, fontSize: 11, fontWeight: 700}}>{label}</span>
+            <span style={{color: BASE.text, fontSize: 11, fontWeight: 800}}>{curr}{unit} / {target}{unit}</span>
+          </div>
+          <div style={{height: 5, background: BASE.dim, borderRadius: 3}}>
+            <div style={{height: "100%", width: `${pct * 100}%`, background: color, borderRadius: 3, transition: "width .6s ease"}} />
+          </div>
+        </div>
+      );
+    }
+
+    function Badge({label, color, C}) {
+      const col = color || C.lime;
+      return <span style={{padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${col}18`, color: col, border: `1px solid ${col}30`}}>{label}</span>;
+    }
+
+    function Glass({children, style = {}, glow = false, C}) {
+      return (
+        <div style={{background: "rgba(12,15,24,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid rgba(${C.accentRgb},0.12)`, borderRadius: 20, boxShadow: glow ? `0 0 40px rgba(${C.accentRgb},0.08), inset 0 1px 0 rgba(255,255,255,0.04)` : `inset 0 1px 0 rgba(255,255,255,0.04)`, ...style}}>
+          {children}
+        </div>
+      );
+    }
+
+    function RestTimer({seconds, onDone, onClose, C}) {
+      const [left, setLeft] = useState(seconds);
+      useEffect(() => {
+        if (left <= 0) {onDone(); return;}
+        const id = setTimeout(() => setLeft((l) => l - 1), 1000);
+        return () => clearTimeout(id);
+      }, [left]);
+      useEffect(() => {
+        if (left === 3 && "vibrate" in navigator) navigator.vibrate([100, 50, 100]);
+        if (left === 0 && "vibrate" in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+      }, [left]);
+      const pct = left / seconds;
+      return (
+        <div style={{position: "fixed", inset: 0, background: "rgba(0,0,0,.88)", zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)"}}>
+          <Glass C={C} glow style={{padding: 36, maxWidth: 300, width: "90%", textAlign: "center"}}>
+            <div style={{color: BASE.muted, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 20}}>⏱ DESCANSO</div>
+            <Ring pct={pct} r={56} C={C} stroke={6}>
+              <div style={{color: left <= 3 ? BASE.red : C.lime, fontSize: 42, fontWeight: 900, lineHeight: 1}}>{left}</div>
+              <div style={{color: BASE.muted, fontSize: 10}}>seg</div>
+            </Ring>
+            <div style={{marginTop: 24, display: "flex", gap: 10}}>
+              <button onClick={() => setLeft((l) => Math.max(0, l - 15))} style={{flex: 1, padding: "10px", borderRadius: 12, border: `1px solid ${BASE.border}`, background: BASE.bg3, color: BASE.muted, fontWeight: 700, fontSize: 13, cursor: "pointer"}}>−15s</button>
+              <button onClick={onClose} style={{flex: 1, padding: "10px", borderRadius: 12, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 13, cursor: "pointer"}}>⏭ Pular</button>
+            </div>
+          </Glass>
+        </div>
+      );
+    }
+
+    function SOSModal({exercise, onClose, C}) {
+      const [msg, setMsg] = useState("");
+      const [sent, setSent] = useState(false);
+      const [sending, setSending] = useState(false);
+      const handleSend = () => {setSending(true); setTimeout(() => {sendHelpAlert(exercise?.name || "—", msg); setSent(true); setTimeout(onClose, 2500); setSending(false);}, 700);};
+      return (
+        <div style={{position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(12px)"}}>
+          <Glass C={C} style={{padding: 26, maxWidth: 360, width: "100%", border: "2px solid rgba(255,124,64,.4)", boxShadow: "0 0 40px rgba(255,124,64,.2)"}}>
+            {sent ? (
+              <div style={{textAlign: "center", padding: "16px 0"}}>
+                <div style={{fontSize: 52, marginBottom: 12}}>✅</div>
+                <div style={{color: BASE.green, fontWeight: 900, fontSize: 20, marginBottom: 6}}>Alerta Enviado!</div>
+                <div style={{color: BASE.muted, fontSize: 13}}>Seu personal foi notificado.</div>
+              </div>
+            ) : (
+              <>
+                <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14}}>
+                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <div style={{width: 34, height: 34, borderRadius: 9, background: "rgba(255,124,64,.15)", border: "1px solid rgba(255,124,64,.3)", display: "flex", alignItems: "center", justifyContent: "center"}}><Ic n="handhelp" s={18} c={BASE.orange} /></div>
+                    <div><div style={{color: BASE.orange, fontWeight: 900, fontSize: 17, letterSpacing: 1}}>PRECISO DE AJUDA</div><div style={{color: BASE.muted, fontSize: 12}}>Personal será alertado agora</div></div>
+                  </div>
+                  <button onClick={onClose} style={{background: "none", border: "none", cursor: "pointer", padding: 4}} aria-label="Fechar"><Ic n="x" s={20} c={BASE.muted} /></button>
+                </div>
+                <div style={{background: BASE.bg3, borderRadius: 11, border: `1px solid ${BASE.border}`, padding: "12px 14px", marginBottom: 13}}>
+                  <div style={{color: BASE.dim, fontSize: 10, fontWeight: 700, letterSpacing: .5, marginBottom: 4}}>🏋️ EXERCÍCIO ATUAL</div>
+                  <div style={{color: BASE.text, fontWeight: 800, fontSize: 15}}>{exercise?.name || "—"}</div>
+                  {exercise?.muscle && <div style={{color: BASE.muted, fontSize: 12, marginTop: 2}}>{exercise.muscle} · {exercise.sets}×{exercise.reps} · {exercise.weight}kg</div>}
+                </div>
+                <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Ex: Não consigo fazer o movimento correto..." rows={3} style={{width: "100%", background: BASE.bg3, border: `1px solid ${BASE.borderHi}`, borderRadius: 10, padding: "10px 12px", color: BASE.text, fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.5, marginBottom: 14, boxSizing: "border-box"}} />
+                <button onClick={handleSend} disabled={sending} style={{width: "100%", padding: 14, borderRadius: 12, border: "none", cursor: "pointer", background: sending ? BASE.bg3 : "linear-gradient(135deg,#ff7c40,#ff4560)", color: sending ? BASE.muted : "#fff", fontWeight: 900, fontSize: 15, boxShadow: sending ? "none" : "0 0 28px rgba(255,124,64,.35)", transition: "all .2s"}}>
+                  {sending ? "Enviando..." : "🆘 Chamar Personal Agora"}
+                </button>
+              </>
+            )}
+          </Glass>
+        </div>
+      );
+    }
+
+    function CheckinModal({onClose, onSuccess, C}) {
+      const [phase, setPhase] = useState("intro");
+      const [msg, setMsg] = useState("");
+      const videoRef = useRef(null);
+      const streamRef = useRef(null);
+      const stopCamera = () => {if (streamRef.current) {streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null;} };
+      const startCamera = async () => {
+        setPhase("scanning");
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}});
+          streamRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+          setTimeout(() => {stopCamera(); checkGPS();}, 2500);
+        } catch {setMsg("Câmera não disponível. Simulando leitura do QR..."); setTimeout(() => checkGPS(), 1500);}
+      };
+      const checkGPS = () => {
+        setPhase("gps");
+        if (!navigator.geolocation) {setPhase("success"); return;}
+        navigator.geolocation.getCurrentPosition(() => {setPhase("success"); if (onSuccess) onSuccess();}, () => {setPhase("success"); if (onSuccess) onSuccess();}, {timeout: 5000});
+      };
+      useEffect(() => {return () => stopCamera();}, []);
+      return (
+        <div style={{position: "fixed", inset: 0, background: "rgba(0,0,0,.94)", zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(16px)"}}>
+          <Glass C={C} glow style={{padding: 28, maxWidth: 360, width: "100%", textAlign: "center"}}>
+            {phase === "intro" && (<><div style={{fontSize: 52, marginBottom: 12}}>📍</div><div style={{color: BASE.text, fontWeight: 900, fontSize: 20, marginBottom: 8}}>Check-in na Academia</div><div style={{color: BASE.muted, fontSize: 13, marginBottom: 22}}>Aponte para o QR Code da entrada para registrar sua presença e ganhar <span style={{color: C.lime}}>+15 VortexCoins</span>!</div><button onClick={startCamera} style={{width: "100%", padding: 15, borderRadius: 14, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: C.limeGlow}}><Ic n="qr" s={20} c={BASE.bg} /> Escanear QR Code</button><button onClick={onClose} style={{marginTop: 12, background: "none", border: "none", color: BASE.muted, cursor: "pointer", fontSize: 14, fontWeight: 600}}>Cancelar</button></>)}
+            {phase === "scanning" && (<><div style={{color: C.lime, fontWeight: 900, fontSize: 16, marginBottom: 14}}>📷 Escaneando...</div><div style={{width: "100%", height: 220, borderRadius: 16, overflow: "hidden", background: BASE.bg3, border: `2px solid ${C.lime}40`, position: "relative", marginBottom: 16}}><video ref={videoRef} autoPlay playsInline muted style={{width: "100%", height: "100%", objectFit: "cover"}} /><div style={{position: "absolute", top: 0, left: 0, right: 0, height: 3, background: C.lime, opacity: 0.8, animation: "scanLine 1.5s linear infinite", boxShadow: `0 0 8px ${C.lime}`}} />{msg && <div style={{position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", color: C.lime, fontSize: 12, fontWeight: 700}}>{msg}</div>}</div><div style={{color: BASE.muted, fontSize: 12}}>Aponte para o QR Code da academia...</div></>)}
+            {phase === "gps" && (<><div style={{fontSize: 48, marginBottom: 12, animation: "pulse 1s ease infinite"}}>📡</div><div style={{color: BASE.text, fontWeight: 800, fontSize: 16, marginBottom: 8}}>Verificando localização...</div><div style={{color: BASE.muted, fontSize: 13}}>Confirmando que você está na academia.</div></>)}
+            {phase === "success" && (<><div style={{fontSize: 60, marginBottom: 12, animation: "pop .4s cubic-bezier(.34,1.56,.64,1)"}}>🏆</div><div style={{color: C.lime, fontWeight: 900, fontSize: 22, marginBottom: 6}}>Check-in Confirmado!</div><div style={{color: BASE.muted, fontSize: 13, marginBottom: 16}}>Você está na academia. Bora treinar!</div><div style={{background: C.limeD, border: `1px solid ${C.lime}40`, borderRadius: 12, padding: "12px 16px", marginBottom: 20}}><div style={{color: C.lime, fontWeight: 900, fontSize: 18}}>+15 VortexCoins 🪙</div><div style={{color: BASE.muted, fontSize: 12}}>Adicionados ao seu saldo</div></div><button onClick={onClose} style={{width: "100%", padding: 14, borderRadius: 12, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 15, cursor: "pointer", boxShadow: C.limeGlow}}>Começar Treino 💪</button></>)}
+            {phase === "fail" && (<><div style={{fontSize: 52, marginBottom: 12}}>🚫</div><div style={{color: BASE.red, fontWeight: 900, fontSize: 18, marginBottom: 8}}>Fora do Raio!</div><div style={{color: BASE.muted, fontSize: 13, marginBottom: 20}}>Você está fora da academia! Aproxime-se para fazer check-in.</div><button onClick={onClose} style={{width: "100%", padding: 13, borderRadius: 12, border: "none", background: "rgba(255,69,96,.2)", color: BASE.red, fontWeight: 900, fontSize: 15, cursor: "pointer"}}>Fechar</button></>)}
+          </Glass>
+        </div>
+      );
+    }
+
+    function WorkoutSequential({workout, onBack, onFinish, C}) {
+      const [currentEx, setCurrentEx] = useState(0);
+      const [sets, setSets] = useState(workout.exercises.reduce((acc, ex) => ({...acc, [ex.id]: Array(ex.sets).fill(null).map(() => ({done: false, reps: ex.reps, weight: ex.weight}))}), {}));
+      const [timer, setTimer] = useState(null);
+      const [sosOpen, setSosOpen] = useState(false);
+      const [showFinish, setShowFinish] = useState(false);
+      const [touchStart, setTouchStart] = useState(null);
+      const ex = workout.exercises[currentEx];
+      const progress = workout.exercises.reduce((t, e) => {const d = sets[e.id]?.filter((s) => s.done).length || 0; return t + d / e.sets;}, 0) / workout.exercises.length;
+      const allDone = workout.exercises.every((e) => sets[e.id]?.every((s) => s.done));
+      const toggleSet = (exId, idx) => {
+        const wasDone = sets[exId][idx].done;
+        setSets((prev) => {const u = [...prev[exId]]; u[idx] = {...u[idx], done: !u[idx].done}; return {...prev, [exId]: u};});
+        if (!wasDone) {setTimer(ex.rest); if ("vibrate" in navigator) navigator.vibrate(50);}
+      };
+      const goNext = () => {if (currentEx < workout.exercises.length - 1) setCurrentEx((i) => i + 1);};
+      const goPrev = () => {if (currentEx > 0) setCurrentEx((i) => i - 1);};
+      const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
+      const handleTouchEnd = (e) => {if (!touchStart) return; const dx = touchStart - e.changedTouches[0].clientX; if (Math.abs(dx) > 60) {if (dx > 0) goNext(); else goPrev();} setTouchStart(null);};
+      useEffect(() => {if (allDone) setTimeout(() => setShowFinish(true), 600);}, [allDone]);
+
+      if (showFinish) return (
+        <div style={{minHeight: "100vh", background: BASE.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", position: "relative", overflow: "hidden"}}>
+          <Confetti active={true} />
+          <div style={{fontSize: 72, marginBottom: 16, animation: "pop .5s cubic-bezier(.34,1.56,.64,1)"}}>🏆</div>
+          <div style={{color: C.lime, fontWeight: 900, fontSize: 28, marginBottom: 8}}>TREINO COMPLETO!</div>
+          <div style={{color: BASE.muted, fontSize: 15, marginBottom: 24}}>Você arrasou! {workout.exercises.length} exercícios concluídos.</div>
+          <Glass C={C} glow style={{padding: 20, width: "100%", maxWidth: 300, marginBottom: 24}}>
+            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12}}>
+              {[["⏱", workout.duration + "min", "DURAÇÃO"], ["💪", workout.exercises.length, "EXERCÍCIOS"], ["🔥", "520", "KCAL"], ["+50", "XP", "EXPERIÊNCIA"]].map(([icon, val, lbl]) => (
+                <div key={lbl} style={{textAlign: "center"}}><div style={{fontSize: 18, marginBottom: 2}}>{icon}</div><div style={{color: C.lime, fontWeight: 900, fontSize: 20}}>{val}</div><div style={{color: BASE.muted, fontSize: 10, fontWeight: 700}}>{lbl}</div></div>
+              ))}
+            </div>
+          </Glass>
+          <button onClick={onFinish} style={{width: "100%", maxWidth: 300, padding: 16, borderRadius: 14, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 17, cursor: "pointer", boxShadow: C.limeGlow}}>Fechar Treino ✓</button>
+        </div>
+      );
+
+      return (
+        <div style={{minHeight: "100vh", background: BASE.bg, fontFamily: "'Oswald',system-ui"}} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          {timer && <RestTimer seconds={timer} onDone={() => setTimer(null)} onClose={() => setTimer(null)} C={C} />}
+          {sosOpen && <SOSModal exercise={ex} onClose={() => setSosOpen(false)} C={C} />}
+          <div style={{background: "rgba(7,9,14,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid rgba(${C.accentRgb},0.15)`, padding: "14px 18px", position: "sticky", top: 0, zIndex: 100}}>
+            <div style={{display: "flex", alignItems: "center", gap: 10, marginBottom: 10}}>
+              <button onClick={onBack} style={{background: BASE.bg3, border: "none", borderRadius: 10, width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"}} aria-label="Voltar"><Ic n="chevL" s={18} c={BASE.muted} /></button>
+              <div style={{flex: 1, minWidth: 0}}><div style={{color: BASE.text, fontWeight: 900, fontSize: 16, letterSpacing: .5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{workout.name}</div><div style={{color: BASE.muted, fontSize: 11, marginTop: 1}}>{workout.exercises.length} exercícios · {workout.duration}min</div></div>
+              <div style={{textAlign: "right"}}><div style={{color: C.lime, fontSize: 22, fontWeight: 900}}>{Math.round(progress * 100)}%</div></div>
+            </div>
+            <div style={{height: 4, background: BASE.bg3, borderRadius: 3}}><div style={{height: "100%", width: `${progress * 100}%`, background: C.g1, borderRadius: 3, transition: "width .5s ease", boxShadow: `0 0 8px rgba(${C.accentRgb},0.6)`}} /></div>
+          </div>
+          <div style={{display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0 16px"}}>
+            <Ring pct={progress} r={52} C={C} stroke={7}><div style={{color: C.lime, fontSize: 28, fontWeight: 900, lineHeight: 1}}>{currentEx + 1}</div><div style={{color: BASE.muted, fontSize: 11}}>de {workout.exercises.length}</div></Ring>
+          </div>
+          <div style={{display: "flex", gap: 5, padding: "0 16px 12px", overflowX: "auto"}}>
+            {workout.exercises.map((e, i) => {
+              const done = sets[e.id]?.every((s) => s.done);
+              return <button key={e.id} onClick={() => setCurrentEx(i)} style={{padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${currentEx === i ? C.lime : done ? BASE.green : BASE.border}`, background: currentEx === i ? C.limeD : done ? "rgba(34,208,122,.1)" : BASE.bg2, color: currentEx === i ? C.lime : done ? BASE.green : BASE.muted, transition: "all .2s"}}>{done ? "✓" : i + 1}. {e.name.split(" ").slice(0, 2).join(" ")}</button>;
+            })}
+          </div>
+          <div style={{padding: "0 16px"}}>
+            <Glass C={C} glow style={{padding: 20, marginBottom: 12}}>
+              <div style={{marginBottom: 14}}>
+                <div style={{color: C.lime, fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 3}}>{(ex.muscle || "—").toUpperCase()}</div>
+                <h2 style={{color: BASE.text, fontSize: 22, fontWeight: 900, margin: "0 0 5px", lineHeight: 1.15}}>{ex.name}</h2>
+                <div style={{color: BASE.muted, fontSize: 13}}>{ex.sets} séries × {ex.reps} reps · {ex.rest}s descanso</div>
+              </div>
+              {ex.weight > ex.lastWeight && (
+                <div style={{background: `rgba(${C.accentRgb},.07)`, border: `1px solid rgba(${C.accentRgb},.2)`, borderRadius: 10, padding: "9px 12px", marginBottom: 12, display: "flex", gap: 7, alignItems: "center"}}>
+                  <Ic n="trending" s={14} c={C.lime} /><span style={{color: C.lime, fontSize: 12, fontWeight: 700}}>Progressão: {ex.weight}kg (+{(ex.weight - ex.lastWeight).toFixed(1)}kg)</span>
+                </div>
+              )}
+              <div style={{display: "flex", flexDirection: "column", gap: 8}}>
+                {sets[ex.id]?.map((set, i) => (
+                  <div key={i} style={{display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", borderRadius: 12, transition: "all .25s", background: set.done ? "rgba(34,208,122,.1)" : BASE.bg3, border: `1px solid ${set.done ? "rgba(34,208,122,.3)" : BASE.border}`}}>
+                    <div style={{color: BASE.muted, fontSize: 13, fontWeight: 700, width: 24, textAlign: "center"}}>S{i + 1}</div>
+                    <div style={{flex: 1, display: "flex", gap: 7}}>
+                      <div style={{flex: 1}}><div style={{color: BASE.dim, fontSize: 10, fontWeight: 700, marginBottom: 2}}>REPS</div><input type="number" value={set.reps} onChange={(e) => setSets((prev) => {const u = [...prev[ex.id]]; u[i] = {...u[i], reps: +e.target.value}; return {...prev, [ex.id]: u};})} style={{width: "100%", background: "transparent", border: `1px solid ${BASE.border}`, borderRadius: 7, padding: "5px 7px", color: BASE.text, fontSize: 17, fontWeight: 900, outline: "none", textAlign: "center"}} /></div>
+                      <div style={{flex: 1}}><div style={{color: BASE.dim, fontSize: 10, fontWeight: 700, marginBottom: 2}}>KG</div><input type="number" value={set.weight} step="2.5" onChange={(e) => setSets((prev) => {const u = [...prev[ex.id]]; u[i] = {...u[i], weight: +e.target.value}; return {...prev, [ex.id]: u};})} style={{width: "100%", background: "transparent", border: `1px solid ${BASE.border}`, borderRadius: 7, padding: "5px 7px", color: C.lime, fontSize: 17, fontWeight: 900, outline: "none", textAlign: "center"}} /></div>
+                    </div>
+                    <button onClick={() => toggleSet(ex.id, i)} style={{width: 42, height: 42, borderRadius: 11, border: "none", cursor: "pointer", background: set.done ? "rgba(34,208,122,.25)" : BASE.bg2, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s", transform: set.done ? "scale(1.05)" : "scale(1)"}} aria-label={`Série ${i + 1} ${set.done ? "concluída" : "pendente"}`}><Ic n="check" s={19} c={set.done ? BASE.green : BASE.dim} w={set.done ? 3 : 2} /></button>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setSosOpen(true)} style={{width: "100%", marginTop: 12, padding: "10px 13px", borderRadius: 10, border: "1px solid rgba(255,124,64,.25)", background: "rgba(255,124,64,.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: BASE.orange, fontWeight: 800, fontSize: 13}}><Ic n="handhelp" s={15} c={BASE.orange} /> 🆘 Chamar Personal</button>
+            </Glass>
+            <div style={{display: "flex", gap: 10, marginBottom: 20}}>
+              <button onClick={goPrev} disabled={currentEx === 0} style={{flex: 1, padding: 14, borderRadius: 13, border: `1px solid ${BASE.border}`, background: BASE.bg2, color: BASE.muted, fontWeight: 700, fontSize: 14, cursor: currentEx === 0 ? "not-allowed" : "pointer", opacity: currentEx === 0 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6}} aria-label="Exercício anterior"><Ic n="chevL" s={16} c={BASE.muted} /> Anterior</button>
+              <button onClick={currentEx < workout.exercises.length - 1 ? goNext : () => setShowFinish(true)} style={{flex: 2, padding: 14, borderRadius: 13, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: C.limeGlow}}>
+                {currentEx < workout.exercises.length - 1 ? <><span>Próximo</span><Ic n="chevR" s={16} c={BASE.bg} /></> : <span>Finalizar Treino 🏆</span>}
+              </button>
+            </div>
+            <div style={{textAlign: "center", color: BASE.dim, fontSize: 11, paddingBottom: 30}}>← deslize para navegar →</div>
+          </div>
+        </div>
+      );
+    }
+
+    function HomeTab({workouts, onStartWorkout, C, onCheckin}) {
+      const [missions, setMissions] = useState(DAILY_MISSIONS);
+      const today = workouts.find((w) => w.day === "Hoje" && !w.done);
+      const totalCoinsToday = missions.filter((m) => m.done).reduce((s, m) => s + m.reward, 0);
+      const xpPct = USER.xp / USER.xpNext;
+      const toggleMission = (id) => setMissions((prev) => prev.map((m) => m.id === id ? {...m, done: !m.done} : m));
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          <Glass C={C} glow style={{padding: "20px", marginBottom: 14}}>
+            <div style={{display: "flex", alignItems: "center", gap: 14, marginBottom: 14}}>
+              <div style={{flex: 1}}><div style={{color: BASE.muted, fontSize: 12, fontWeight: 700, letterSpacing: .5}}>BOM DIA 👋</div><div style={{color: BASE.text, fontSize: 20, fontWeight: 900, letterSpacing: .5}}>{USER.name.split(" ")[0]}</div><div style={{color: C.lime, fontSize: 12, fontWeight: 700, marginTop: 2}}>Nível {USER.level} · {USER.plan}</div></div>
+              <div style={{textAlign: "center"}}><div style={{fontSize: 26, lineHeight: 1, animation: "flame 1.5s ease-in-out infinite"}}>🔥</div><div style={{color: BASE.gold, fontWeight: 900, fontSize: 20}}>{USER.streak}</div><div style={{color: BASE.muted, fontSize: 10, fontWeight: 700}}>DIAS</div></div>
+            </div>
+            <div style={{marginBottom: 4, display: "flex", justifyContent: "space-between"}}><span style={{color: BASE.muted, fontSize: 11, fontWeight: 700}}>XP</span><span style={{color: C.lime, fontSize: 11, fontWeight: 800}}>{USER.xp} / {USER.xpNext}</span></div>
+            <div style={{height: 6, background: BASE.dim, borderRadius: 3, overflow: "hidden"}}><div style={{height: "100%", width: `${xpPct * 100}%`, background: C.g1, borderRadius: 3, boxShadow: `0 0 8px rgba(${C.accentRgb},0.5)`, transition: "width .8s ease"}} /></div>
+          </Glass>
+          <button onClick={onCheckin} style={{width: "100%", padding: "16px 20px", borderRadius: 16, border: `1px solid rgba(${C.accentRgb},0.3)`, background: `rgba(${C.accentRgb},0.07)`, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, marginBottom: 14, transition: "all .2s"}}>
+            <div style={{width: 46, height: 46, borderRadius: 13, background: C.limeD, border: `1px solid rgba(${C.accentRgb},0.3)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0}}><Ic n="qr" s={22} c={C.lime} /></div>
+            <div style={{flex: 1, textAlign: "left"}}><div style={{color: BASE.text, fontWeight: 900, fontSize: 15}}>Check-in na Academia</div><div style={{color: BASE.muted, fontSize: 12}}>Escaneie o QR · Ganhe +15 VortexCoins</div></div>
+            <div style={{background: C.g1, borderRadius: 8, padding: "4px 10px", color: BASE.bg, fontSize: 12, fontWeight: 900}}>+15 🪙</div>
+          </button>
+          {today && (
+            <div style={{marginBottom: 14}}>
+              <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 9}}>⚡ Treino de Hoje</div>
+              <Glass C={C} glow style={{padding: 18}}>
+                <div style={{display: "flex", alignItems: "center", gap: 12, marginBottom: 12}}>
+                  <div style={{width: 46, height: 46, borderRadius: 13, background: C.limeD, border: `1px solid rgba(${C.accentRgb},0.3)`, display: "flex", alignItems: "center", justifyContent: "center"}}><Ic n="dumbbell" s={22} c={C.lime} /></div>
+                  <div style={{flex: 1}}><div style={{color: BASE.text, fontSize: 16, fontWeight: 900}}>{today.name}</div><div style={{color: BASE.muted, fontSize: 12}}>{today.exercises.length} exercícios · ⏱ {today.duration}min</div></div>
+                </div>
+                <button onClick={() => onStartWorkout(today)} style={{width: "100%", padding: 14, borderRadius: 12, border: "none", background: C.g1, color: BASE.bg, fontWeight: 900, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: C.limeGlow}}><Ic n="play" s={18} c={BASE.bg} /> Iniciar Treino</button>
+              </Glass>
+            </div>
+          )}
+          <div style={{marginBottom: 14}}>
+            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9}}>
+              <div style={{color: BASE.text, fontWeight: 900, fontSize: 16}}>🎯 Missões Diárias</div>
+              <div style={{background: `${BASE.gold}18`, color: BASE.gold, border: `1px solid ${BASE.gold}30`, borderRadius: 8, padding: "3px 10px", fontSize: 12, fontWeight: 800}}>+{totalCoinsToday} 🪙</div>
+            </div>
+            <div style={{display: "flex", flexDirection: "column", gap: 7}}>
+              {missions.map((m) => (
+                <button key={m.id} onClick={() => toggleMission(m.id)} style={{display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 13, border: `1px solid ${m.done ? BASE.green + "40" : BASE.border}`, background: m.done ? "rgba(34,208,122,.07)" : BASE.bg1, cursor: "pointer", transition: "all .2s", width: "100%", textAlign: "left"}}>
+                  <div style={{fontSize: 20}}>{m.icon}</div>
+                  <div style={{flex: 1}}><div style={{color: m.done ? BASE.green : BASE.text, fontWeight: 700, fontSize: 13, textDecoration: m.done ? "line-through" : "none"}}>{m.title}</div></div>
+                  <div style={{display: "flex", alignItems: "center", gap: 6}}><span style={{color: BASE.gold, fontSize: 12, fontWeight: 800}}>+{m.reward} 🪙</span><div style={{width: 22, height: 22, borderRadius: 6, border: `2px solid ${m.done ? BASE.green : BASE.dim}`, background: m.done ? "rgba(34,208,122,.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center"}}>{m.done && <Ic n="check" s={14} c={BASE.green} w={3} />}</div></div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{marginBottom: 14}}>
+            <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 9}}>🏆 Desafios Semanais</div>
+            <div style={{display: "flex", flexDirection: "column", gap: 9}}>
+              {WEEKLY_CHALLENGES.map((ch) => {
+                const pct = ch.progress / ch.total;
+                return (
+                  <Glass C={C} key={ch.id} style={{padding: 16}}>
+                    <div style={{display: "flex", alignItems: "flex-start", gap: 12}}>
+                      <div style={{fontSize: 28, flexShrink: 0}}>{ch.icon}</div>
+                      <div style={{flex: 1}}>
+                        <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3}}><div style={{color: BASE.text, fontWeight: 800, fontSize: 14}}>{ch.title}</div><span style={{color: BASE.gold, fontSize: 12, fontWeight: 800}}>+{ch.reward} 🪙</span></div>
+                        <div style={{color: BASE.muted, fontSize: 12, marginBottom: 8}}>{ch.desc}</div>
+                        <div style={{display: "flex", alignItems: "center", gap: 8}}><div style={{flex: 1, height: 6, background: BASE.dim, borderRadius: 3, overflow: "hidden"}}><div style={{height: "100%", width: `${pct * 100}%`, background: ch.color, borderRadius: 3, boxShadow: `0 0 6px ${ch.color}80`, transition: "width .6s ease"}} /></div><span style={{color: BASE.muted, fontSize: 11, fontWeight: 700, flexShrink: 0}}>{ch.progress}/{ch.total}</span></div>
+                      </div>
+                    </div>
+                  </Glass>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{marginBottom: 14}}>
+            <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 9}}>📅 Semana</div>
+            {workouts.map((w) => (
+              <button key={w.id} onClick={() => !w.done && onStartWorkout(w)} style={{width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 13, background: w.done ? "rgba(34,208,122,.07)" : BASE.bg1, border: `1px solid ${w.done ? "rgba(34,208,122,.2)" : BASE.border}`, marginBottom: 7, cursor: w.done ? "default" : "pointer", textAlign: "left", transition: "all .2s"}}>
+                <div style={{width: 36, height: 36, borderRadius: 10, background: w.done ? "rgba(34,208,122,.15)" : BASE.bg3, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0}}>{w.done ? <Ic n="check" s={18} c={BASE.green} w={3} /> : <Ic n="dumbbell" s={18} c={BASE.muted} />}</div>
+                <div style={{flex: 1}}><div style={{color: w.done ? BASE.green : BASE.text, fontWeight: 700, fontSize: 14}}>{w.name}</div><div style={{color: BASE.muted, fontSize: 12}}>{w.day} · {w.exercises.length} exercícios</div></div>
+                {!w.done && <Ic n="chevR" s={16} c={BASE.dim} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function DietTab({diet, C}) {
+      const [expanded, setExpanded] = useState(null);
+      const calPct = diet.currentCalories / diet.targetCalories;
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          <h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: "0 0 3px"}}>{diet.name}</h2>
+          {diet.obs ? <p style={{color: BASE.cyan, fontSize: 12, margin: "0 0 14px", fontStyle: "italic"}}>📋 {diet.obs}</p> : <p style={{color: BASE.muted, fontSize: 12, margin: "0 0 14px"}}>Plano definido pelo seu personal trainer</p>}
+          <Glass C={C} glow style={{padding: 18, marginBottom: 13, display: "flex", alignItems: "center", gap: 18}}>
+            <Ring pct={calPct} r={46} C={C} stroke={6}><div style={{color: C.lime, fontSize: 16, fontWeight: 900}}>{diet.currentCalories}</div><div style={{color: BASE.dim, fontSize: 9, fontWeight: 700}}>KCAL</div></Ring>
+            <div style={{flex: 1}}>
+              <div style={{color: BASE.text, fontWeight: 800, fontSize: 15, marginBottom: 1}}>{diet.currentCalories} / {diet.targetCalories} kcal</div>
+              <div style={{color: BASE.muted, fontSize: 12, marginBottom: 10}}>{diet.targetCalories - diet.currentCalories} kcal restantes</div>
+              <MacroBar label="Proteína" curr={diet.macros.protein.current} target={diet.macros.protein.target} color={BASE.blue} unit="g" C={C} />
+              <MacroBar label="Carboidrato" curr={diet.macros.carbs.current} target={diet.macros.carbs.target} color={C.lime} unit="g" C={C} />
+              <MacroBar label="Gordura" curr={diet.macros.fat.current} target={diet.macros.fat.target} color={BASE.orange} unit="g" C={C} />
+            </div>
+          </Glass>
+          <div style={{color: BASE.text, fontWeight: 900, fontSize: 17, marginBottom: 10}}>Refeições</div>
+          {diet.meals.map((meal) => (
+            <div key={meal.id} style={{background: BASE.bg1, borderRadius: 14, border: `1px solid ${meal.done ? "rgba(34,208,122,.2)" : BASE.border}`, marginBottom: 8, overflow: "hidden"}}>
+              <button onClick={() => setExpanded(expanded === meal.id ? null : meal.id)} style={{width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "13px 14px", cursor: "pointer", background: "none", border: "none", textAlign: "left"}}>
+                <div style={{width: 42, height: 42, borderRadius: 10, background: meal.done ? "rgba(34,208,122,.12)" : BASE.bg3, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0}}>{meal.done ? <Ic n="check" s={20} c={BASE.green} w={3} /> : <Ic n="salad" s={20} c={BASE.muted} />}</div>
+                <div style={{flex: 1}}><div style={{color: meal.done ? BASE.green : BASE.text, fontWeight: 700, fontSize: 14}}>{meal.name}</div><div style={{color: BASE.muted, fontSize: 12}}>{meal.time} · {meal.calories} kcal</div></div>
+                <Ic n={expanded === meal.id ? "chevU" : "chevD"} s={15} c={BASE.dim} />
+              </button>
+              {expanded === meal.id && (
+                <div style={{padding: "0 14px 12px", borderTop: `1px solid ${BASE.border}`}}>
+                  <div style={{paddingTop: 8}}>{meal.foods.map((f, i) => <div key={i} style={{color: BASE.muted, fontSize: 13, padding: "4px 0", borderBottom: i < meal.foods.length - 1 ? `1px solid ${BASE.dim}` : 0}}>• {f}</div>)}</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function ProgressTab({measures, C}) {
+      const [sliderPos, setSliderPos] = useState(50);
+      const containerRef = useRef(null);
+      const handleSliderMove = (clientX) => {if (!containerRef.current) return; const rect = containerRef.current.getBoundingClientRect(); const pct = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100)); setSliderPos(pct);};
+      if (!measures || measures.length === 0) {
+        return (
+          <div style={{padding: "20px 16px 120px"}}>
+            <h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: "0 0 3px"}}>Minha Evolução</h2>
+            <p style={{color: BASE.muted, fontSize: 13, margin: "0 0 28px"}}>Fotos de progresso e medidas corporais</p>
+            <div style={{marginBottom: 16}}>
+              <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 10}}>📸 Antes × Depois</div>
+              <Glass C={C} style={{overflow: "hidden", borderRadius: 18}}>
+                <div ref={containerRef} style={{position: "relative", height: 220, userSelect: "none", cursor: "col-resize"}} onMouseMove={(e) => handleSliderMove(e.clientX)} onTouchMove={(e) => handleSliderMove(e.touches[0].clientX)}>
+                  <div style={{position: "absolute", inset: 0, background: `linear-gradient(135deg, ${BASE.bg3}, ${BASE.bg2})`, display: "flex", alignItems: "center", justifyContent: "center"}}><div style={{textAlign: "center", opacity: 0.5}}><div style={{fontSize: 40, marginBottom: 6}}>📷</div><div style={{color: BASE.muted, fontSize: 12, fontWeight: 700}}>ANTES</div></div></div>
+                  <div style={{position: "absolute", inset: 0, clipPath: `inset(0 ${100 - sliderPos}% 0 0)`, background: `linear-gradient(135deg, ${C.lime}20, ${BASE.bg3})`, display: "flex", alignItems: "center", justifyContent: "center"}}><div style={{textAlign: "center", opacity: 0.7}}><div style={{fontSize: 40, marginBottom: 6}}>💪</div><div style={{color: C.lime, fontSize: 12, fontWeight: 700}}>DEPOIS</div></div></div>
+                  <div style={{position: "absolute", top: 0, bottom: 0, left: `${sliderPos}%`, width: 3, background: "#fff", transform: "translateX(-50%)", boxShadow: "0 0 12px rgba(255,255,255,0.8)"}}><div style={{position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 32, height: 32, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 12px rgba(0,0,0,.4)"}}><span style={{color: BASE.bg, fontSize: 14, fontWeight: 900}}>⇄</span></div></div>
+                  <div style={{position: "absolute", top: 10, left: 12, background: "rgba(0,0,0,.6)", borderRadius: 6, padding: "3px 8px", color: BASE.muted, fontSize: 11, fontWeight: 700}}>ANTES</div>
+                  <div style={{position: "absolute", top: 10, right: 12, background: `rgba(${C.accentRgb},.3)`, borderRadius: 6, padding: "3px 8px", color: C.lime, fontSize: 11, fontWeight: 700}}>DEPOIS</div>
+                </div>
+                <div style={{padding: "12px 16px", textAlign: "center"}}><div style={{color: BASE.muted, fontSize: 12}}>Adicione fotos de progresso no painel do seu personal</div></div>
+              </Glass>
+            </div>
+            <div style={{textAlign: "center", padding: "40px 20px", background: BASE.bg1, borderRadius: 18, border: `2px dashed ${BASE.border}`}}><div style={{fontSize: 52, marginBottom: 14}}>📏</div><div style={{color: BASE.text, fontWeight: 800, fontSize: 16, marginBottom: 8}}>Nenhuma medição ainda</div><div style={{color: BASE.muted, fontSize: 13}}>Seu personal ainda não registrou suas medidas.</div></div>
+          </div>
+        );
+      }
+      const last = measures[measures.length - 1]; const first = measures[0];
+      const diff = (last.peso - first.peso).toFixed(1);
+      const ws = measures.map((m) => m.peso); const mx = Math.max(...ws); const mn = Math.min(...ws);
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          <h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: "0 0 3px"}}>Minha Evolução</h2>
+          <p style={{color: BASE.muted, fontSize: 13, margin: "0 0 14px"}}>Atualizada pelo personal · {measures.length} medições</p>
+          <Glass C={C} glow style={{padding: 18, marginBottom: 13}}>
+            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14}}>
+              <div><div style={{color: BASE.muted, fontSize: 11, fontWeight: 700, letterSpacing: .5}}>EVOLUÇÃO DE PESO</div><div style={{color: BASE.text, fontWeight: 900, fontSize: 30, lineHeight: 1, marginTop: 3}}>{last.peso}<span style={{fontSize: 14, color: BASE.muted}}> kg</span></div></div>
+              <div style={{textAlign: "right"}}><div style={{color: Number(diff) >= 0 ? BASE.green : BASE.red, fontWeight: 900, fontSize: 22}}>{Number(diff) >= 0 ? "+" : ""}{diff}kg</div><div style={{color: BASE.muted, fontSize: 11}}>desde o início</div></div>
+            </div>
+            {ws.length > 1 && (<svg viewBox="0 0 280 55" style={{width: "100%", height: 55}}><defs><linearGradient id="mg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.lime} stopOpacity=".35" /><stop offset="100%" stopColor={C.lime} stopOpacity="0" /></linearGradient></defs><path d={`M${ws.map((w, i) => `${i * (280 / (ws.length - 1))},${55 - (w - mn) / (mx - mn + .1) * 46}`).join(" L")} L280,55 L0,55 Z`} fill="url(#mg2)" /><polyline points={ws.map((w, i) => `${i * (280 / (ws.length - 1))},${55 - (w - mn) / (mx - mn + .1) * 46}`).join(" ")} fill="none" stroke={C.lime} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />{ws.map((w, i) => <circle key={i} cx={i * (280 / (ws.length - 1))} cy={55 - (w - mn) / (mx - mn + .1) * 46} r="3.5" fill={C.lime} stroke={BASE.bg1} strokeWidth="2" />)}</svg>)}
+          </Glass>
+          <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 10}}>Medidas Atuais</div>
+          <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14}}>
+            {[["⚖️", "Peso", last.peso, "kg", C.lime], last.altura > 0 && ["📏", "Altura", last.altura, "cm", BASE.blue], last.bf > 0 && ["🔥", "Gordura", last.bf, "%", BASE.orange], last.peito > 0 && ["💪", "Peito", last.peito, "cm", BASE.cyan], last.cintura > 0 && ["📐", "Cintura", last.cintura, "cm", BASE.purple], last.braco > 0 && ["💪", "Braço", last.braco, "cm", BASE.green]].filter(Boolean).map(([icon, label, value, unit, color]) => (
+              <div key={label} style={{background: BASE.bg2, borderRadius: 13, border: `1px solid ${BASE.border}`, padding: "13px 10px", textAlign: "center"}}><div style={{fontSize: 20, marginBottom: 5}}>{icon}</div><div style={{color, fontWeight: 900, fontSize: 20, lineHeight: 1}}>{value}{unit}</div><div style={{color: BASE.dim, fontSize: 10, marginTop: 4, fontWeight: 700}}>{label.toUpperCase()}</div></div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function ExercisesTab({library, C}) {
+      const [search, setSearch] = useState("");
+      const [openGrp, setOpenGrp] = useState(null);
+      const lib = library || EX_LIB_DEFAULT;
+      const total = lib.reduce((s, g) => s + g.ex.length, 0);
+      const filtered = search.trim() ? lib.map((g) => ({...g, ex: g.ex.filter((e) => e.toLowerCase().includes(search.toLowerCase()))})).filter((g) => g.ex.length > 0) : lib;
+      const grpIcon = (g) => ({Peito: "💪", Costas: "🏋️", Pernas: "🦵", Panturrilha: "🦶", Ombros: "🔱", Bíceps: "💪", Tríceps: "💪", "Abdômen & Core": "🎯"}[g] || "🏋️");
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          <h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: "0 0 3px"}}>Banco de Exercícios</h2>
+          <p style={{color: BASE.muted, fontSize: 13, margin: "0 0 15px"}}>{total} exercícios · {lib.length} grupos</p>
+          <div style={{position: "relative", marginBottom: 16}}>
+            <div style={{position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none"}}><svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={BASE.muted} strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg></div>
+            <input type="text" placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} style={{width: "100%", background: BASE.bg1, border: `1px solid ${BASE.borderHi}`, borderRadius: 13, padding: "12px 14px 12px 36px", color: BASE.text, fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box"}} />
+          </div>
+          {filtered.map((group) => {
+            const isOpen = openGrp === group.g || search.trim().length > 0;
+            return (
+              <div key={group.g} style={{marginBottom: 8}}>
+                <button onClick={() => setOpenGrp(isOpen && !search ? null : group.g)} style={{width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "13px 14px", background: BASE.bg1, borderRadius: isOpen ? "13px 13px 0 0" : 13, border: `1px solid ${openGrp === group.g && !search ? group.col + "50" : BASE.border}`, cursor: "pointer", transition: "all .2s", textAlign: "left"}}>
+                  <div style={{width: 36, height: 36, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: `${group.col}18`, border: `1px solid ${group.col}30`, fontSize: 16}}>{grpIcon(group.g)}</div>
+                  <div style={{flex: 1}}><div style={{color: BASE.text, fontWeight: 800, fontSize: 14}}>{group.g}</div><div style={{color: BASE.muted, fontSize: 12, marginTop: 1}}>{group.ex.length} exercícios</div></div>
+                  <Ic n={isOpen ? "chevU" : "chevD"} s={15} c={BASE.dim} />
+                </button>
+                {isOpen && (
+                  <div style={{background: BASE.bg2, border: `1px solid ${BASE.border}`, borderTop: "none", borderRadius: "0 0 13px 13px", overflow: "hidden"}}>
+                    {group.ex.map((e, i) => <div key={i} style={{padding: "10px 16px", color: BASE.muted, fontSize: 13, borderBottom: i < group.ex.length - 1 ? `1px solid ${BASE.dim}` : "none", display: "flex", alignItems: "center", gap: 8}}><div style={{width: 6, height: 6, borderRadius: "50%", background: group.col, flexShrink: 0}} />{e}</div>)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function NotificationsTab({C}) {
+      const [notifs, setNotifs] = useState([]);
+      const [unread, setUnread] = useState(0);
+      const load = () => {
+        try {
+          const raw = localStorage.getItem("vortex_notifs");
+          if (!raw) return;
+          const all = JSON.parse(raw);
+          const mine = all.filter((n) => n.stuName === USER.name).sort((a, b) => b.ts - a.ts);
+          setNotifs(mine); setUnread(mine.filter((n) => !n.read).length);
+          if (mine.some((n) => !n.read)) {const updated = all.map((n) => n.stuName === USER.name ? {...n, read: true} : n); localStorage.setItem("vortex_notifs", JSON.stringify(updated));}
+        } catch { }
+      };
+      useEffect(() => {load(); const iv = setInterval(load, 4000); return () => clearInterval(iv);}, []);
+      const deleteOne = (id) => {try {const all = JSON.parse(localStorage.getItem("vortex_notifs") || "[]"); localStorage.setItem("vortex_notifs", JSON.stringify(all.filter((n) => !(n.stuName === USER.name && n.id === id)))); setNotifs((prev) => prev.filter((n) => n.id !== id));} catch { } };
+      const deleteAll = () => {try {const all = JSON.parse(localStorage.getItem("vortex_notifs") || "[]"); localStorage.setItem("vortex_notifs", JSON.stringify(all.filter((n) => n.stuName !== USER.name))); setNotifs([]); setUnread(0);} catch { } };
+      const typeColors = {msg: {color: BASE.blue, bg: "rgba(59,130,246,.1)"}, alert: {color: BASE.red, bg: "rgba(255,69,96,.1)"}, congrats: {color: BASE.gold, bg: "rgba(245,183,49,.1)"}, update: {color: BASE.cyan, bg: "rgba(6,214,214,.1)"}, supp: {color: BASE.green, bg: "rgba(34,208,122,.1)"}, sched: {color: BASE.purple, bg: "rgba(168,85,247,.1)"}, goal: {color: C.lime, bg: `rgba(${C.accentRgb},.1)`}, tip: {color: BASE.orange, bg: "rgba(255,124,64,.1)"}};
+      const timeAgo = (ts) => {const d = Math.floor((Date.now() - ts) / 1000); if (d < 60) return "agora mesmo"; if (d < 3600) return `${Math.floor(d / 60)}min atrás`; if (d < 86400) return `${Math.floor(d / 3600)}h atrás`; return `${Math.floor(d / 86400)}d atrás`;};
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16}}>
+            <div><h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: 0}}>Notificações</h2><p style={{color: BASE.muted, fontSize: 13, marginTop: 3}}>Mensagens do seu personal</p></div>
+            <div style={{display: "flex", gap: 8, alignItems: "center"}}>
+              {unread > 0 && <div style={{background: BASE.red, color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 12, fontWeight: 900}}>{unread} nova{unread > 1 ? "s" : ""}</div>}
+              {notifs.length > 0 && <button onClick={deleteAll} style={{background: "rgba(255,69,96,.1)", border: "1px solid rgba(255,69,96,.25)", borderRadius: 9, padding: "6px 12px", cursor: "pointer", color: BASE.red, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5}}><Ic n="x" s={13} c={BASE.red} /> Limpar</button>}
+            </div>
+          </div>
+          {notifs.length === 0 ? (
+            <div style={{textAlign: "center", padding: "60px 20px", background: BASE.bg1, borderRadius: 18, border: `2px dashed ${BASE.border}`}}><div style={{fontSize: 52, marginBottom: 14}}>🔔</div><div style={{color: BASE.text, fontWeight: 800, fontSize: 16, marginBottom: 8}}>Nenhuma notificação</div><div style={{color: BASE.muted, fontSize: 13}}>Seu personal ainda não enviou nenhuma mensagem.</div></div>
+          ) : (
+            <div style={{display: "flex", flexDirection: "column", gap: 10}}>
+              {notifs.map((n) => {
+                const tc = typeColors[n.type] || typeColors.msg;
+                return (
+                  <div key={n.id} style={{background: BASE.bg1, borderRadius: 16, border: `1px solid ${n.read ? BASE.border : tc.color + "50"}`, padding: 16, boxShadow: n.read ? "none" : `0 0 16px ${tc.color}18`}}>
+                    <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10}}>
+                      <div style={{display: "flex", alignItems: "center", gap: 9}}><div style={{width: 36, height: 36, borderRadius: 10, background: tc.bg, border: `1px solid ${tc.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0}}>{n.typeLabel?.split(" ")[0]}</div><div><div style={{color: tc.color, fontWeight: 800, fontSize: 13}}>{n.typeLabel?.split(" ").slice(1).join(" ")}</div><div style={{color: BASE.muted, fontSize: 11, marginTop: 1}}>{USER.personal} · {timeAgo(n.ts)}</div></div></div>
+                      <div style={{display: "flex", alignItems: "center", gap: 6, flexShrink: 0}}>{!n.read && <div style={{width: 8, height: 8, borderRadius: "50%", background: tc.color}} />}<button onClick={() => deleteOne(n.id)} style={{background: "rgba(255,69,96,.08)", border: "1px solid rgba(255,69,96,.2)", borderRadius: 7, width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}><Ic n="x" s={13} c={BASE.red} /></button></div>
+                    </div>
+                    <div style={{background: BASE.bg3, borderRadius: 10, border: `1px solid ${BASE.border}`, padding: "11px 13px"}}><p style={{color: BASE.text, fontSize: 14, lineHeight: 1.6, margin: 0}}>"{n.msg}"</p></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function CoinsTab({C}) {
+      const [activeTab, setActiveTab] = useState("ranking");
+      const [toast, setToast] = useState(null);
+      const redeem = (r) => {if (USER.gymCoins < r.cost) {setToast({msg: "VortexCoins insuficientes! 😢", type: "error"});} else {setToast({msg: `${r.icon} Resgatado: ${r.name}!`, type: "success"});} setTimeout(() => setToast(null), 2500);};
+      return (
+        <div style={{padding: "20px 16px 120px"}}>
+          {toast && <Toast msg={toast.msg} type={toast.type} C={C} />}
+          <h2 style={{color: BASE.text, fontWeight: 900, fontSize: 24, margin: "0 0 3px"}}>VortexCoins</h2>
+          <p style={{color: BASE.muted, fontSize: 13, margin: "0 0 14px"}}>Recompensas por consistência e conquistas</p>
+          <Glass C={C} glow style={{padding: 20, marginBottom: 16, display: "flex", alignItems: "center", gap: 16}}>
+            <div style={{fontSize: 44, flexShrink: 0}}>⚡</div>
+            <div><div style={{color: BASE.muted, fontSize: 11, fontWeight: 700, letterSpacing: .5}}>SEU SALDO</div><div style={{color: BASE.gold, fontWeight: 900, fontSize: 36, lineHeight: 1}}>{USER.gymCoins}</div><div style={{color: BASE.muted, fontSize: 12}}>VortexCoins</div></div>
+            <div style={{marginLeft: "auto", textAlign: "right"}}><div style={{color: BASE.muted, fontSize: 11, fontWeight: 700}}>RANKING</div><div style={{color: C.lime, fontWeight: 900, fontSize: 22}}>#{USER.rank}</div><div style={{color: BASE.muted, fontSize: 11}}>da academia</div></div>
+          </Glass>
+          <div style={{display: "flex", gap: 0, marginBottom: 16, background: BASE.bg2, borderRadius: 12, padding: 4}}>
+            {[["ranking", "🏆 Ranking"], ["rewards", "🎁 Resgates"]].map(([key, label]) => (
+              <button key={key} onClick={() => setActiveTab(key)} style={{flex: 1, padding: "10px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all .2s", background: activeTab === key ? C.g1 : "transparent", color: activeTab === key ? BASE.bg : BASE.muted}}>{label}</button>
+            ))}
+          </div>
+          {activeTab === "ranking" && (
+            <div style={{display: "flex", flexDirection: "column", gap: 8}}>
+              {RANKING.map((r) => (
+                <div key={r.pos} style={{display: "flex", alignItems: "center", gap: 12, padding: "13px 15px", borderRadius: 14, background: r.isMe ? `rgba(${C.accentRgb},.06)` : BASE.bg1, border: `1px solid ${r.isMe ? C.lime + "40" : BASE.border}`, boxShadow: r.isMe ? `0 0 20px rgba(${C.accentRgb},.08)` : "none"}}>
+                  <div style={{width: 30, textAlign: "center", fontWeight: 900, fontSize: 18, color: r.pos === 1 ? "#FFD700" : r.pos === 2 ? "#C0C0C0" : r.pos === 3 ? "#CD7F32" : BASE.muted}}>{r.pos <= 3 ? ["🥇", "🥈", "🥉"][r.pos - 1] : r.pos}</div>
+                  <Ava name={r.name} size={36} C={C} />
+                  <div style={{flex: 1}}><div style={{color: r.isMe ? C.lime : BASE.text, fontWeight: 800, fontSize: 14}}>{r.name}{r.isMe ? " (você)" : ""}</div><div style={{color: BASE.muted, fontSize: 12}}>🔥 {r.streak} dias</div></div>
+                  <div style={{color: BASE.gold, fontWeight: 900, fontSize: 16}}>⚡{r.coins}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {activeTab === "rewards" && (
+            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9}}>
+              {REWARDS.map((r) => {
+                const canAfford = USER.gymCoins >= r.cost;
+                return (
+                  <Glass C={C} key={r.id} style={{padding: 16, textAlign: "center", border: `1px solid ${canAfford ? `rgba(${C.accentRgb},.2)` : BASE.border}`}}>
+                    <div style={{fontSize: 32, marginBottom: 8}}>{r.icon}</div>
+                    <div style={{color: BASE.text, fontWeight: 700, fontSize: 12, marginBottom: 6, lineHeight: 1.3}}>{r.name}</div>
+                    <div style={{color: BASE.gold, fontWeight: 900, fontSize: 15, marginBottom: 10}}>⚡ {r.cost}</div>
+                    <button onClick={() => redeem(r)} style={{width: "100%", padding: "8px", borderRadius: 9, border: "none", background: canAfford ? C.g1 : BASE.bg3, color: canAfford ? BASE.bg : BASE.muted, fontWeight: 900, fontSize: 12, cursor: canAfford ? "pointer" : "not-allowed", boxShadow: canAfford ? C.limeGlow : "none"}}>{canAfford ? "Resgatar" : "Bloqueado"}</button>
+                  </Glass>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function ProfileTab({C, currentTheme, onThemeChange}) {
+      const [bio, setBio] = useState(USER.bio);
+      const [editingBio, setEditingBio] = useState(false);
+      const [shareMsg, setShareMsg] = useState(null);
+      const shareAchievement = () => {setShareMsg("🖼️ Imagem gerada! Compartilhe no Instagram ou WhatsApp 🚀"); setTimeout(() => setShareMsg(null), 3000);};
+      return (
+        <div style={{padding: "0 0 120px"}}>
+          {shareMsg && <Toast msg={shareMsg} type="success" C={C} />}
+          <div style={{position: "relative", marginBottom: 50}}>
+            <div style={{height: 140, background: `linear-gradient(135deg, rgba(${C.accentRgb},.3) 0%, rgba(12,15,24,1) 100%)`, borderBottom: `1px solid rgba(${C.accentRgb},0.2)`, overflow: "hidden"}}><ParticlesBg C={C} /></div>
+            <div style={{position: "absolute", bottom: -40, left: 20, display: "flex", alignItems: "flex-end", gap: 14}}>
+              <div style={{position: "relative"}}><Ava name={USER.name} size={80} C={C} /><div style={{position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: C.g1, border: `2px solid ${BASE.bg}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"}}><Ic n="camera" s={12} c={BASE.bg} /></div></div>
+            </div>
+            <div style={{position: "absolute", bottom: -36, right: 16}}>
+              <button onClick={shareAchievement} style={{display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 10, border: `1px solid rgba(${C.accentRgb},.3)`, background: `rgba(${C.accentRgb},.1)`, color: C.lime, fontWeight: 700, fontSize: 12, cursor: "pointer"}}><Ic n="share" s={13} c={C.lime} /> Compartilhar</button>
+            </div>
+          </div>
+          <div style={{padding: "0 16px"}}>
+            <div style={{marginBottom: 16}}>
+              <div style={{color: BASE.text, fontWeight: 900, fontSize: 22}}>{USER.name}</div>
+              <div style={{color: C.lime, fontSize: 13, fontWeight: 700, marginBottom: 8}}>Nível {USER.level} · {USER.plan}</div>
+              <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                {editingBio ? (
+                  <div style={{flex: 1}}>
+                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2} style={{width: "100%", background: BASE.bg3, border: `1px solid ${BASE.borderHi}`, borderRadius: 10, padding: "8px 10px", color: BASE.text, fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", boxSizing: "border-box"}} />
+                    <button onClick={() => setEditingBio(false)} style={{marginTop: 6, padding: "6px 14px", borderRadius: 8, border: "none", background: C.g1, color: BASE.bg, fontWeight: 800, fontSize: 12, cursor: "pointer"}}>Salvar</button>
+                  </div>
+                ) : (<><div style={{color: BASE.muted, fontSize: 13, flex: 1, fontStyle: "italic"}}>{bio}</div><button onClick={() => setEditingBio(true)} style={{background: "none", border: "none", cursor: "pointer", padding: 4}}><Ic n="edit" s={15} c={BASE.muted} /></button></>)}
+              </div>
+            </div>
+            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 9, marginBottom: 16}}>
+              {[["🔥", USER.streak, "Streak"], ["💪", USER.totalWorkouts, "Treinos"], ["⚡", USER.gymCoins, "Coins"]].map(([icon, val, label]) => (
+                <Glass C={C} key={label} style={{padding: 14, textAlign: "center"}}>
+                  <div style={{fontSize: 22, marginBottom: 4, animation: label === "Streak" ? "flame 1.5s ease-in-out infinite" : "none"}}>{icon}</div>
+                  <div style={{color: C.lime, fontWeight: 900, fontSize: 20}}>{val}</div>
+                  <div style={{color: BASE.muted, fontSize: 10, fontWeight: 700}}>{label.toUpperCase()}</div>
+                </Glass>
+              ))}
+            </div>
+            <div style={{marginBottom: 16}}>
+              <div style={{color: BASE.text, fontWeight: 900, fontSize: 16, marginBottom: 10}}>🎨 Tema</div>
+              <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+                {Object.entries(THEMES).map(([key, t]) => (
+                  <button key={key} onClick={() => onThemeChange(key)} style={{display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 12px", borderRadius: 12, border: `2px solid ${currentTheme === key ? t.accent : BASE.border}`, background: currentTheme === key ? `${t.accent}15` : BASE.bg2, cursor: "pointer", transition: "all .2s", minWidth: 64}}>
+                    <div style={{fontSize: 20}}>{t.emoji}</div>
+                    <div style={{color: currentTheme === key ? t.accent : BASE.muted, fontSize: 10, fontWeight: 700}}>{t.name.split(" ")[0]}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Glass C={C} style={{padding: 18, marginBottom: 14}}>
+              <div style={{color: BASE.muted, fontSize: 11, fontWeight: 700, letterSpacing: .5, marginBottom: 12}}>📋 INFORMAÇÕES</div>
+              {[["👨‍🏫 Personal", USER.personal], ["📅 Plano", USER.plan], ["💪 Treinos", `${USER.totalWorkouts} concluídos`], ["⭐ XP", `${USER.xp} / ${USER.xpNext}`]].map(([label, value]) => (
+                <div key={label} style={{display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${BASE.dim}`}}>
+                  <span style={{color: BASE.muted, fontSize: 13}}>{label}</span>
+                  <span style={{color: BASE.text, fontWeight: 700, fontSize: 13}}>{value}</span>
+                </div>
+              ))}
+            </Glass>
+          </div>
+        </div>
+      );
+    }
+
+    function VORTEXApp() {
+      const [theme, setTheme] = useState(() => {try {return localStorage.getItem("vortex_theme") || "lime-neon";} catch {return "lime-neon";} });
+      const C = useMemo(() => makeC(theme), [theme]);
+      const [tab, setTab] = useState("home");
+      const [activeWorkout, setActiveWorkout] = useState(null);
+      const [checkinOpen, setCheckinOpen] = useState(false);
+      const [syncedAt, setSyncedAt] = useState(null);
+      const [toast, setToast] = useState(null);
+      const [notifBadge, setNotifBadge] = useState(0);
+      const [workouts, setWorkouts] = useState(DEFAULT_WORKOUTS);
+      const [diet, setDiet] = useState(DEFAULT_DIET);
+      const [measures, setMeasures] = useState(null);
+      const [exLibrary, setExLibrary] = useState(null);
+
+      useEffect(() => {try {localStorage.setItem("vortex_theme", theme);} catch { } }, [theme]);
+      useEffect(() => {
+        const {workouts: wk, diet: dt, measures: ms, exLibrary: ex, ts} = readSync();
+        if (wk) setWorkouts(wk); if (dt) setDiet(dt); if (ms) setMeasures(ms); if (ex) setExLibrary(ex);
+        if (ts !== "0") setSyncedAt(new Date(Number(ts)));
+        const poll = setInterval(() => {const r = readSync(); if (r.workouts) setWorkouts(r.workouts); if (r.diet) setDiet(r.diet); if (r.measures) setMeasures(r.measures);}, 6000);
+        return () => clearInterval(poll);
+      }, []);
+      useEffect(() => {
+        const goOnline = () => {setToast({msg: "🌐 Sincronizando com o servidor...", type: "info"}); setTimeout(() => setToast(null), 2500);};
+        window.addEventListener("online", goOnline);
+        return () => window.removeEventListener("online", goOnline);
+      }, []);
+      useEffect(() => {
+        const check = () => {try {const raw = localStorage.getItem("vortex_notifs"); if (!raw) return; const all = JSON.parse(raw); setNotifBadge(all.filter((n) => n.stuName === USER.name && !n.read).length);} catch { } };
+        check(); const iv = setInterval(check, 4000); return () => clearInterval(iv);
+      }, []);
+
+      const handleFinishWorkout = () => {setActiveWorkout(null); setToast({msg: "🏆 Treino finalizado! +50 XP ganhos!", type: "success"}); setTimeout(() => setToast(null), 3000);};
+      const handleCheckinSuccess = () => {setTimeout(() => {setCheckinOpen(false); setToast({msg: "✅ Check-in feito! +15 VortexCoins 🪙", type: "success"}); setTimeout(() => setToast(null), 3000);}, 2000);};
+
+      const tabs = [
+        {id: "home", label: "Home", icon: "home", badge: 0},
+        {id: "exercises", label: "Exercícios", icon: "dumbbell", badge: 0},
+        {id: "diet", label: "Dieta", icon: "salad", badge: 0},
+        {id: "progress", label: "Evolução", icon: "chart", badge: 0},
+        {id: "notifs", label: "Notícias", icon: "bell", badge: notifBadge},
+        {id: "coins", label: "Coins", icon: "trophy", badge: 0},
+        {id: "profile", label: "Perfil", icon: "user", badge: 0},
+      ];
+
+      if (activeWorkout) return <WorkoutSequential workout={activeWorkout} onBack={() => setActiveWorkout(null)} onFinish={handleFinishWorkout} C={C} />;
+
+      return (
+        <div style={{background: BASE.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", position: "relative", fontFamily: "'Oswald', system-ui, sans-serif", overflowX: "hidden"}}>
+          <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700;900&display=swap');
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: #07090e; }
+        input, textarea, button { font-family: 'Oswald', system-ui, sans-serif; }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(${C.accentRgb},.3); border-radius: 3px; }
+        @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        @keyframes pop { from { transform:scale(.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+        @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+        @keyframes flame { 0%,100% { transform:scale(1) rotate(-3deg); } 50% { transform:scale(1.1) rotate(3deg); } }
+        @keyframes scanLine { 0% { top:0; } 100% { top:100%; } }
+        @keyframes neonPulse { 0%,100% { box-shadow: 0 0 20px rgba(${C.accentRgb},.3); } 50% { box-shadow: 0 0 40px rgba(${C.accentRgb},.6); } }
+        button:active { transform: scale(0.97); }
+        input:focus { border-color: rgba(${C.accentRgb},.5) !important; }
+      `}</style>
+          <ParticlesBg C={C} />
+          {toast && <Toast msg={toast.msg} type={toast.type} C={C} />}
+          {checkinOpen && <CheckinModal onClose={() => setCheckinOpen(false)} onSuccess={handleCheckinSuccess} C={C} />}
+          <div style={{position: "sticky", top: 0, zIndex: 300, background: "rgba(7,9,14,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid rgba(${C.accentRgb},0.12)`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between"}}>
+            <div style={{display: "flex", alignItems: "center", gap: 11}}>
+              <div style={{width: 36, height: 36, borderRadius: 10, background: C.limeD, border: `1px solid rgba(${C.accentRgb},.3)`, display: "flex", alignItems: "center", justifyContent: "center", animation: "neonPulse 3s ease-in-out infinite"}}><Ic n="zap" s={18} c={C.lime} /></div>
+              <div><div style={{color: C.lime, fontSize: 20, fontWeight: 900, letterSpacing: 3, lineHeight: 1}}>VORTEX</div><div style={{color: BASE.muted, fontSize: 10, marginTop: 1, letterSpacing: .5}}>Personal: {USER.personal}</div></div>
+            </div>
+            <div style={{display: "flex", alignItems: "center", gap: 9}}>
+              <div style={{background: BASE.bg3, borderRadius: 9, padding: "5px 11px", display: "flex", alignItems: "center", gap: 5, border: `1px solid ${BASE.border}`}}><span style={{color: BASE.gold, fontSize: 13}}>⚡</span><span style={{color: BASE.gold, fontWeight: 900, fontSize: 14}}>{USER.gymCoins}</span></div>
+              <button onClick={() => setTab("profile")} style={{background: "none", border: "none", cursor: "pointer", padding: 0}}><Ava name={USER.name} size={36} C={C} /></button>
+            </div>
+          </div>
+          <div style={{paddingBottom: 90, position: "relative", zIndex: 1}}>
+            {tab === "home" && <HomeTab workouts={workouts} onStartWorkout={setActiveWorkout} C={C} onCheckin={() => setCheckinOpen(true)} />}
+            {tab === "exercises" && <ExercisesTab library={exLibrary} C={C} />}
+            {tab === "diet" && <DietTab diet={diet} C={C} />}
+            {tab === "progress" && <ProgressTab measures={measures} C={C} />}
+            {tab === "notifs" && <NotificationsTab C={C} />}
+            {tab === "coins" && <CoinsTab C={C} />}
+            {tab === "profile" && <ProfileTab C={C} currentTheme={theme} onThemeChange={setTheme} />}
+          </div>
+          <nav style={{position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "rgba(7,9,14,0.95)", backdropFilter: "blur(20px)", borderTop: `1px solid rgba(${C.accentRgb},0.12)`, padding: "8px 2px 14px", display: "flex", justifyContent: "space-around", zIndex: 200}}>
+            {tabs.map((t) => {
+              const active = tab === t.id;
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 6px", borderTop: active ? `2.5px solid ${C.lime}` : "2.5px solid transparent", position: "relative", minWidth: 44, transition: "all .15s"}} aria-label={t.label} aria-current={active ? "page" : undefined}>
+                  <div style={{position: "relative", transform: active ? "translateY(-1px)" : "none", transition: "transform .15s"}}>
+                    <Ic n={t.icon} s={20} c={active ? C.lime : BASE.dim} w={active ? 2.5 : 2} />
+                    {t.badge > 0 && <div style={{position: "absolute", top: -4, right: -6, background: BASE.red, color: "#fff", borderRadius: 999, fontSize: 9, fontWeight: 900, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", border: `2px solid ${BASE.bg}`}}>{t.badge}</div>}
+                  </div>
+                  <span style={{color: active ? C.lime : BASE.dim, fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: .3}}>{t.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<VORTEXApp />);
+  </script>
+</body>
+
+</html>
